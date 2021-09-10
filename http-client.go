@@ -18,6 +18,7 @@ type DataDecoder func(reader io.Reader, res interface{}) error
 type HttpClient struct {
 	baseUrl               string
 	errorHandler          func(closer io.Reader) error
+	isError               func(resp *http.Response) bool
 	headers               map[string]string
 	httpClient2           *http.Client
 	requestPayloadEncoder DataEncoder
@@ -30,6 +31,7 @@ type HttpClient struct {
 type HttpClientParams struct {
 	BaseUrl               string
 	ErrorHandler          func(closer io.Reader) error
+	IsError               func(resp *http.Response) bool
 	Headers               map[string]string
 	Timeout               time.Duration
 	RequestPayloadEncoder DataEncoder
@@ -50,6 +52,7 @@ func NewHttpClient(params HttpClientParams) *HttpClient {
 	client := HttpClient{
 		baseUrl:      params.BaseUrl,
 		errorHandler: params.ErrorHandler,
+		isError:      params.IsError,
 		headers:      params.Headers,
 		httpClient2: &http.Client{
 			Timeout:   params.Timeout,
@@ -190,7 +193,7 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
+	if c.defaultIsError(resp) {
 		var err error
 		if c.debugMode {
 			err = wrapErr.NewWrapErr(fmt.Errorf("curl: %s", curl), err)
@@ -238,6 +241,10 @@ func (c *HttpClient) defaultErrorHandler(reader io.Reader) error {
 		panic(err)
 	}
 	return e
+}
+
+func (c *HttpClient) defaultIsError(resp *http.Response) bool {
+	return resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest
 }
 
 func (c *HttpClient) fromContextRequestId(ctx context.Context) (string, bool) {
