@@ -165,8 +165,9 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 
 	req.Header.Set("Accept", "application/json; charset=utf-8")
 	if options.Ctx != nil {
-		requestID, _ := c.fromContextRequestId(options.Ctx)
-		req.Header.Set(c.headerKeyRequestID, requestID)
+		if requestID, has := c.fromContextRequestId(options.Ctx); has {
+			req.Header.Set(c.headerKeyRequestID, requestID)
+		}
 	}
 	for i, v := range c.headers {
 		req.Header.Set(i, v)
