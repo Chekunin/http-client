@@ -118,6 +118,7 @@ type RequestOptions struct {
 	RequestPayloadEncoder DataEncoder
 	RequestPayloadDecoder DataDecoder
 	UrlParams             map[string]string
+	AfterCallback         func(req *http.Request, resp *http.Response)
 }
 
 func (c HttpClient) setDefaultOptions(opt *RequestOptions) {
@@ -193,6 +194,10 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if options.AfterCallback != nil {
+		options.AfterCallback(req, resp)
+	}
 
 	if c.defaultIsError(resp) {
 		var err error

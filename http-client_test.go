@@ -1,14 +1,17 @@
 package http_client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -88,7 +91,25 @@ func TestClient(t *testing.T) {
 		io.WriteString(rw, string(respData))
 	}
 	var resp responseStruct
-	_, err := client.PostRequest(context.Background(), "/qwe", headers, payloadData, &resp)
+	_, err := client.DoRequestWithOptions(RequestOptions{
+		Ctx:     context.Background(),
+		Method:  "POST",
+		Url:     "/qwe",
+		Headers: headers,
+		Payload: payloadData,
+		Result:  &resp,
+		AfterCallback: func(req *http.Request, resp *http.Response) {
+			b := bytes.NewBuffer(make([]byte, 0))
+			reader := io.TeeReader(resp.Body, b)
+
+			buf := new(strings.Builder)
+			_, err := io.Copy(buf, reader)
+			assert.NoError(t, err)
+			assert.Equal(t, "{\"data\":\"text2\"}", buf.String())
+
+			resp.Body = ioutil.NopCloser(b)
+		},
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, resp, responseData)
 }
