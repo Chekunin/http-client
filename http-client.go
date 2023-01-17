@@ -146,7 +146,7 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 	c.setDefaultOptions(&options)
 	payloadReader, err := options.RequestPayloadEncoder(options.Payload)
 	if err != nil {
-		err = wrapErr.NewWrapErr(fmt.Errorf("requestPayloadEncoder"), err)
+		err = wrapErr.Wrap(fmt.Errorf("requestPayloadEncoder"), err)
 		return nil, err
 	}
 	reqBuffer := bytes.NewBuffer(make([]byte, 0))
@@ -167,7 +167,7 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 		payloadReader,
 	)
 	if err != nil {
-		err = wrapErr.NewWrapErr(fmt.Errorf("new request with context"), err)
+		err = wrapErr.Wrap(fmt.Errorf("new request with context"), err)
 		return nil, err
 	}
 
@@ -200,10 +200,10 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 	requestTook := fmt.Sprintf("request took %f microseconds", float64(time.Now().UnixNano()-t.UnixNano())/float64(time.Microsecond))
 	if err != nil {
 		if c.debugMode {
-			err = wrapErr.NewWrapErr(fmt.Errorf("curl: %s", curl), err)
-			err = wrapErr.NewWrapErr(fmt.Errorf("%s", requestTook), err)
+			err = wrapErr.Wrap(fmt.Errorf("curl: %s", curl), err)
+			err = wrapErr.Wrap(fmt.Errorf("%s", requestTook), err)
 		}
-		err = wrapErr.NewWrapErr(fmt.Errorf("do http request"), err)
+		err = wrapErr.Wrap(fmt.Errorf("do http request"), err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -216,19 +216,19 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 	if c.defaultIsError(resp) {
 		var err error
 		if c.debugMode {
-			err = wrapErr.NewWrapErr(fmt.Errorf("curl: %s", curl), err)
-			err = wrapErr.NewWrapErr(fmt.Errorf("%s", requestTook), err)
+			err = wrapErr.Wrap(fmt.Errorf("curl: %s", curl), err)
+			err = wrapErr.Wrap(fmt.Errorf("%s", requestTook), err)
 		}
-		err = wrapErr.NewWrapErr(fmt.Errorf("http status code=%d curl", resp.StatusCode), c.defaultErrorHandler(resp.Body))
+		err = wrapErr.Wrap(fmt.Errorf("http status code=%d curl", resp.StatusCode), c.defaultErrorHandler(resp.Body))
 		return nil, err
 	}
 	if options.Result != nil {
 		if err := options.RequestPayloadDecoder(resp.Body, options.Result); err != nil {
 			if c.debugMode {
-				err = wrapErr.NewWrapErr(fmt.Errorf("curl: %s", curl), err)
-				err = wrapErr.NewWrapErr(fmt.Errorf("%s", requestTook), err)
+				err = wrapErr.Wrap(fmt.Errorf("curl: %s", curl), err)
+				err = wrapErr.Wrap(fmt.Errorf("%s", requestTook), err)
 			}
-			err = wrapErr.NewWrapErr(fmt.Errorf("decode resp.Body"), err)
+			err = wrapErr.Wrap(fmt.Errorf("decode resp.Body"), err)
 			return nil, err
 		}
 	}

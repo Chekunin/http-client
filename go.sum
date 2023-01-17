@@ -1,5 +1,7 @@
 github.com/Chekunin/wraperr v0.1.1 h1:RTS7RJQ49dxJ31oVu+NRSaNuxx2HIon0/o4C8QOxDqw=
 github.com/Chekunin/wraperr v0.1.1/go.mod h1:KoLDYaQthqp6EFOLko7CtTINbF/b7Dx3VrOmO5X6zfE=
+github.com/Chekunin/wraperr v0.2.0 h1:+8QZfB1jRYElA1ug2gHyme/MY0NvjicWAqgdvyXzWhY=
+github.com/Chekunin/wraperr v0.2.0/go.mod h1:yaTIoy66Ra1NXfAKbKCi7rH1FvK0U9Oi483Y54BHjU0=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 h1:EGx4pi6eqNxGaHF6qqu48+N2wcFQ5qg5FXgOdqsJ5d8=
