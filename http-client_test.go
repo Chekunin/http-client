@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -108,6 +109,11 @@ func TestClient(t *testing.T) {
 			assert.Equal(t, "{\"data\":\"text2\"}", buf.String())
 
 			resp.Body = ioutil.NopCloser(b)
+
+			rBuf := &strings.Builder{}
+			_, err = io.Copy(rBuf, req.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, "{\"data\":\"text1\"}", rBuf.String())
 		},
 	})
 	assert.NoError(t, err)
