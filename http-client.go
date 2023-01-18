@@ -3,6 +3,7 @@ package http_client
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -42,10 +43,11 @@ type HttpClientParams struct {
 	ContextRequestId      string
 	HeaderKeyRequestID    string
 	DebugMode             bool
+	TlsConfig             *tls.Config
 }
 
 func NewHttpClient(params HttpClientParams) *HttpClient {
-	transport := getDefaultHttpTransport()
+	transport := getDefaultHttpTransport(params.TlsConfig)
 	transport.MaxIdleConnsPerHost = params.MaxIdleConnsPerHost
 	if params.MaxIdleConnsPerHost == 0 {
 		transport.MaxIdleConnsPerHost = 100
@@ -75,7 +77,7 @@ func NewHttpClient(params HttpClientParams) *HttpClient {
 	return &client
 }
 
-func getDefaultHttpTransport() *http.Transport {
+func getDefaultHttpTransport(tlsConfig *tls.Config) *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -88,6 +90,7 @@ func getDefaultHttpTransport() *http.Transport {
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       tlsConfig,
 	}
 }
 

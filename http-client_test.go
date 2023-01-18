@@ -3,6 +3,8 @@ package http_client
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"io"
@@ -246,4 +248,53 @@ func TestCtxCancel(t *testing.T) {
 	})
 	t.Log(err)
 	assert.Error(t, err)
+}
+
+func TestTlsConfig(t *testing.T) {
+	hs = httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.RequestURI == wait1sUri {
+			time.Sleep(time.Second)
+		}
+		handler(rw, req)
+	}))
+	defer hs.Close()
+	hs.StartTLS()
+	handler = func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/qwe" {
+			t.Error("Bad path!")
+		}
+
+		responseData := []int{42}
+		respData, err := json.Marshal(responseData)
+		assert.NoError(t, err)
+		io.WriteString(rw, string(respData))
+	}
+
+	assert.NotEmpty(t, hs.TLS.Certificates)
+	certificate, err := x509.ParseCertificate(hs.TLS.Certificates[0].Certificate[0])
+	assert.NoError(t, err)
+	certpool := x509.NewCertPool()
+	certpool.AddCert(certificate)
+	TLSClientConfig := &tls.Config{
+		RootCAs: certpool,
+	}
+	client = NewHttpClient(HttpClientParams{
+		BaseUrl: hs.URL,
+		ErrorHandler: func(reader io.Reader) error {
+			return someError
+		},
+		Headers:            nil,
+		Timeout:            time.Millisecond * 20,
+		DebugMode:          true,
+		ContextRequestId:   "0",
+		HeaderKeyRequestID: "X-Request-Id",
+		TlsConfig:          TLSClientConfig,
+	})
+	ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*25)
+	_, err = client.DoRequestWithOptions(RequestOptions{
+		Ctx:    ctx,
+		Method: "GET",
+		Url:    "/qwe",
+	})
+	assert.NoError(t, err)
 }
