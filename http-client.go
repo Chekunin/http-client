@@ -118,6 +118,7 @@ type RequestOptions struct {
 	RequestPayloadEncoder DataEncoder
 	RequestPayloadDecoder DataDecoder
 	UrlParams             map[string]string
+	CookieList            []*http.Cookie
 	AfterCallback         func(req *http.Request, resp *http.Response)
 }
 
@@ -156,6 +157,10 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 	if err != nil {
 		err = wrapErr.Wrap(fmt.Errorf("new request with context"), err)
 		return nil, err
+	}
+
+	for i, _ := range options.CookieList {
+		req.AddCookie(options.CookieList[i])
 	}
 
 	q := req.URL.Query()
