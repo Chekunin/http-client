@@ -1,9 +1,12 @@
 package http_client
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"time"
@@ -40,10 +43,11 @@ type HttpClientParams struct {
 	ContextRequestId      string
 	HeaderKeyRequestID    string
 	DebugMode             bool
+	TlsConfig             *tls.Config
 }
 
 func NewHttpClient(params HttpClientParams) *HttpClient {
-	transport := getDefaultHttpTransport()
+	transport := getDefaultHttpTransport(params.TlsConfig)
 	transport.MaxIdleConnsPerHost = params.MaxIdleConnsPerHost
 	if params.MaxIdleConnsPerHost == 0 {
 		transport.MaxIdleConnsPerHost = 100
@@ -73,7 +77,7 @@ func NewHttpClient(params HttpClientParams) *HttpClient {
 	return &client
 }
 
-func getDefaultHttpTransport() *http.Transport {
+func getDefaultHttpTransport(tlsConfig *tls.Config) *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -86,6 +90,7 @@ func getDefaultHttpTransport() *http.Transport {
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       tlsConfig,
 	}
 }
 
@@ -145,8 +150,19 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 	c.setDefaultOptions(&options)
 	payloadReader, err := options.RequestPayloadEncoder(options.Payload)
 	if err != nil {
-		err = wrapErr.Wrap(fmt.Errorf("requestPayloadEncoder"), err)
+		err = wrapErr.NewWrapErr(fmt.Errorf("requestPayloadEncoder"), err)
 		return nil, err
+	}
+	reqBuffer := bytes.NewBuffer(make([]byte, 0))
+	if options.AfterCallback != nil {
+		b := bytes.NewBuffer(make([]byte, 0))
+		reader := io.TeeReader(payloadReader, b)
+
+		_, err = io.Copy(reqBuffer, reader)
+		if err != nil {
+			return nil, err
+		}
+		payloadReader = ioutil.NopCloser(b)
 	}
 	req, err := http.NewRequestWithContext(
 		options.Ctx,
@@ -155,7 +171,7 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 		payloadReader,
 	)
 	if err != nil {
-		err = wrapErr.Wrap(fmt.Errorf("new request with context"), err)
+		err = wrapErr.NewWrapErr(fmt.Errorf("new request with context"), err)
 		return nil, err
 	}
 
@@ -192,34 +208,35 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 	requestTook := fmt.Sprintf("request took %f microseconds", float64(time.Now().UnixNano()-t.UnixNano())/float64(time.Microsecond))
 	if err != nil {
 		if c.debugMode {
-			err = wrapErr.Wrap(fmt.Errorf("curl: %s", curl), err)
-			err = wrapErr.Wrap(fmt.Errorf("%s", requestTook), err)
+			err = wrapErr.NewWrapErr(fmt.Errorf("curl: %s", curl), err)
+			err = wrapErr.NewWrapErr(fmt.Errorf("%s", requestTook), err)
 		}
-		err = wrapErr.Wrap(fmt.Errorf("do http request"), err)
+		err = wrapErr.NewWrapErr(fmt.Errorf("do http request"), err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if options.AfterCallback != nil {
+		req.Body = ioutil.NopCloser(reqBuffer)
 		options.AfterCallback(req, resp)
 	}
 
 	if c.defaultIsError(resp) {
 		var err error
 		if c.debugMode {
-			err = wrapErr.Wrap(fmt.Errorf("curl: %s", curl), err)
-			err = wrapErr.Wrap(fmt.Errorf("%s", requestTook), err)
+			err = wrapErr.NewWrapErr(fmt.Errorf("curl: %s", curl), err)
+			err = wrapErr.NewWrapErr(fmt.Errorf("%s", requestTook), err)
 		}
-		err = wrapErr.Wrap(fmt.Errorf("http status code=%d curl", resp.StatusCode), c.defaultErrorHandler(resp.Body))
+		err = wrapErr.NewWrapErr(fmt.Errorf("http status code=%d curl", resp.StatusCode), c.defaultErrorHandler(resp.Body))
 		return nil, err
 	}
 	if options.Result != nil {
 		if err := options.RequestPayloadDecoder(resp.Body, options.Result); err != nil {
 			if c.debugMode {
-				err = wrapErr.Wrap(fmt.Errorf("curl: %s", curl), err)
-				err = wrapErr.Wrap(fmt.Errorf("%s", requestTook), err)
+				err = wrapErr.NewWrapErr(fmt.Errorf("curl: %s", curl), err)
+				err = wrapErr.NewWrapErr(fmt.Errorf("%s", requestTook), err)
 			}
-			err = wrapErr.Wrap(fmt.Errorf("decode resp.Body"), err)
+			err = wrapErr.NewWrapErr(fmt.Errorf("decode resp.Body"), err)
 			return nil, err
 		}
 	}
