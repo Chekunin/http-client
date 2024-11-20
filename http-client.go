@@ -1,9 +1,11 @@
 package http_client
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"time"
@@ -148,6 +150,17 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 		err = wrapErr.Wrap(fmt.Errorf("requestPayloadEncoder"), err)
 		return nil, err
 	}
+	reqBuffer := bytes.NewBuffer(make([]byte, 0))
+	if options.AfterCallback != nil {
+		b := bytes.NewBuffer(make([]byte, 0))
+		reader := io.TeeReader(payloadReader, b)
+
+		_, err = io.Copy(reqBuffer, reader)
+		if err != nil {
+			return nil, err
+		}
+		payloadReader = ioutil.NopCloser(b)
+	}
 	req, err := http.NewRequestWithContext(
 		options.Ctx,
 		options.Method,
@@ -201,6 +214,7 @@ func (c *HttpClient) DoRequestWithOptions(options RequestOptions) (*http.Respons
 	defer resp.Body.Close()
 
 	if options.AfterCallback != nil {
+		req.Body = ioutil.NopCloser(reqBuffer)
 		options.AfterCallback(req, resp)
 	}
 
