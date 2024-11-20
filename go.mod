@@ -3,7 +3,7 @@ module github.com/Chekunin/http-client
 go 1.22.3
 
 require (
-	github.com/Chekunin/wraperr v0.2.0
+	github.com/Chekunin/wraperr v0.1.1
 	github.com/stretchr/testify v1.5.1
 	moul.io/http2curl v1.0.0
 )
